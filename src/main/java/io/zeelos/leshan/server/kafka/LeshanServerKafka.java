@@ -486,7 +486,7 @@ public class LeshanServerKafka {
         // TODO: should be really user configurable depending on edge machine capabilities
         producerProps.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, producerCompressionType);
         producerProps.put(ProducerConfig.BATCH_SIZE_CONFIG, Integer.valueOf(producerBatchSize));
-        producerProps.put(ProducerConfig.LINGER_MS_CONFIG, Long.valueOf(producerLingerMs));
+        producerProps.put(ProducerConfig.LINGER_MS_CONFIG, Integer.valueOf(producerLingerMs));
         producerProps.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, 300 * 1000); // 5 mins
         /*
          * "We recommend testing how long it takes to recover from a crashed broker (i.e., how long until all partitions get new leaders)
