@@ -14,6 +14,10 @@ bin/
 .idea/
 *.iml
 
+# Visual Studio Code #
+.vscode/
+.factorypath
+
 # Package Files #
 *.jar
 *.war
