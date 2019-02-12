@@ -14,11 +14,12 @@
 
 package io.zeelos.leshan.server.kafka.serialization.avro;
 
+import org.eclipse.leshan.server.registration.Registration;
+
 import io.zeelos.leshan.avro.registration.AvroRegistrationDelete;
 import io.zeelos.leshan.avro.registration.AvroRegistrationKind;
 import io.zeelos.leshan.avro.registration.AvroRegistrationResponse;
 import io.zeelos.leshan.server.kafka.utils.AvroSerializer;
-import org.eclipse.leshan.server.registration.Registration;
 
 /**
  * Functions for serialize and deserialize a Client in Avro.
@@ -30,9 +31,7 @@ public class RegistrationDeleteSerDes {
         aRegistrationResponseBuilder.setKind(AvroRegistrationKind.DELETE);
 
         AvroRegistrationDelete.Builder aRegistrationDeleteBuilder = AvroRegistrationDelete.newBuilder()
-                .setServerId(serverId)
-                .setEp(r.getEndpoint())
-                .setExpired(expired)
+                .setServerId(serverId).setEp(r.getEndpoint()).setExpired(expired)
                 .setLastUp(r.getLastUpdate().getTime());
 
         aRegistrationResponseBuilder.setBody(aRegistrationDeleteBuilder.build());
@@ -45,6 +44,7 @@ public class RegistrationDeleteSerDes {
     }
 
     public static Registration deserialize(AvroRegistrationResponse response) {
-        throw new IllegalStateException("deserialize on an AvroRegistrationDelete to a Registration is not applicable currently.");
+        throw new IllegalStateException(
+                "deserialize on an AvroRegistrationDelete to a Registration is not applicable currently.");
     }
 }

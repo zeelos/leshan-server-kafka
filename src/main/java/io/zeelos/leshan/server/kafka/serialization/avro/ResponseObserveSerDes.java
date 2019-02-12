@@ -14,23 +14,30 @@
 
 package io.zeelos.leshan.server.kafka.serialization.avro;
 
-import io.zeelos.leshan.avro.request.AvroRequestKind;
-import io.zeelos.leshan.avro.response.*;
-import io.zeelos.leshan.server.kafka.utils.AvroSerializer;
 import org.eclipse.californium.core.Utils;
 import org.eclipse.leshan.ResponseCode;
 import org.eclipse.leshan.core.node.LwM2mNode;
 import org.eclipse.leshan.core.response.ObserveResponse;
 import org.eclipse.leshan.core.response.ReadResponse;
 
+import io.zeelos.leshan.avro.request.AvroRequestKind;
+import io.zeelos.leshan.avro.response.AvroGenericResponse;
+import io.zeelos.leshan.avro.response.AvroReadResponseBody;
+import io.zeelos.leshan.avro.response.AvroResponseCode;
+import io.zeelos.leshan.avro.response.AvroResponseObserve;
+import io.zeelos.leshan.avro.response.AvroResponsePayload;
+import io.zeelos.leshan.server.kafka.utils.AvroSerializer;
+
 /**
  * Functions for serialize and deserialize a LWM2M observe response in Avro.
  * <p>
- * NOTE: we didn't reuse 'ResponseSerDes' in order to have a distinct avro schema for observe responses.
+ * NOTE: we didn't reuse 'ResponseSerDes' in order to have a distinct avro
+ * schema for observe responses.
  */
 public class ResponseObserveSerDes {
 
-    public static AvroResponseObserve aSerialize(String serverId, String ticket, String endpoint, ObserveResponse response) {
+    public static AvroResponseObserve aSerialize(String serverId, String ticket, String endpoint,
+            ObserveResponse response) {
         AvroResponseObserve.Builder aResponseObserveBuilder = AvroResponseObserve.newBuilder();
         aResponseObserveBuilder.setServerId(serverId);
         aResponseObserveBuilder.setTimestamp(System.currentTimeMillis());
@@ -45,7 +52,8 @@ public class ResponseObserveSerDes {
 
         if (response.isFailure()) {
             AvroGenericResponse.Builder aGenericResponseBuilder = AvroGenericResponse.newBuilder();
-            aGenericResponseBuilder.setMessage(response.getErrorMessage().equals("") ? response.getCode().getName() : response.getErrorMessage());
+            aGenericResponseBuilder.setMessage(
+                    response.getErrorMessage().equals("") ? response.getCode().getName() : response.getErrorMessage());
             aResponsePayloadBuilder.setBody(aGenericResponseBuilder.build());
 
             aResponseObserveBuilder.setRep(aResponsePayloadBuilder.build());
@@ -54,7 +62,8 @@ public class ResponseObserveSerDes {
         }
 
         AvroReadResponseBody.Builder aReadObserveResponseBuilder = AvroReadResponseBody.newBuilder();
-        aReadObserveResponseBuilder.setContent(LwM2mNodeSerDes.aSerialize(response.getObservation().getPath(), ((ReadResponse) response).getContent()));
+        aReadObserveResponseBuilder.setContent(LwM2mNodeSerDes.aSerialize(response.getObservation().getPath(),
+                ((ReadResponse) response).getContent()));
         aResponsePayloadBuilder.setBody(aReadObserveResponseBuilder.build());
 
         aResponseObserveBuilder.setRep(aResponsePayloadBuilder.build());
@@ -62,7 +71,8 @@ public class ResponseObserveSerDes {
         return aResponseObserveBuilder.build();
     }
 
-    public static byte[] bSerialize(String serverId, String ticket, String endpoint, ObserveResponse response) throws Exception {
+    public static byte[] bSerialize(String serverId, String ticket, String endpoint, ObserveResponse response)
+            throws Exception {
         return AvroSerializer.toBytes(aSerialize(serverId, ticket, endpoint, response), AvroResponseObserve.class);
     }
 
@@ -78,11 +88,11 @@ public class ResponseObserveSerDes {
         AvroRequestKind kind = aResponsePayload.getKind();
 
         switch (kind) {
-            case observe:
-                LwM2mNode observeContent = LwM2mNodeSerDes.deserialize(aResponsePayload.getBody());
-                return new ObserveResponse(code, observeContent, null, null, null);
-            default:
-                throw new IllegalStateException("Invalid request missing kind attribute");
+        case observe:
+            LwM2mNode observeContent = LwM2mNodeSerDes.deserialize(aResponsePayload.getBody());
+            return new ObserveResponse(code, observeContent, null, null, null);
+        default:
+            throw new IllegalStateException("Invalid request missing kind attribute");
         }
     }
 }

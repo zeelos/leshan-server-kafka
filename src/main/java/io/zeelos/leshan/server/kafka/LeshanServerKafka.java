@@ -14,13 +14,45 @@
 
 package io.zeelos.leshan.server.kafka;
 
-import io.confluent.kafka.serializers.KafkaAvroDeserializer;
-import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
-import io.confluent.kafka.serializers.KafkaAvroSerializer;
-import io.zeelos.leshan.avro.AvroKey;
-import io.zeelos.leshan.avro.request.AvroRequest;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.math.BigInteger;
+import java.net.BindException;
+import java.net.InetAddress;
+import java.security.AlgorithmParameters;
+import java.security.Key;
+import java.security.KeyFactory;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.cert.Certificate;
+import java.security.cert.X509Certificate;
+import java.security.spec.ECGenParameterSpec;
+import java.security.spec.ECParameterSpec;
+import java.security.spec.ECPoint;
+import java.security.spec.ECPrivateKeySpec;
+import java.security.spec.ECPublicKeySpec;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.InvalidParameterSpecException;
+import java.security.spec.KeySpec;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.Properties;
+
+import javax.jmdns.JmDNS;
+import javax.jmdns.ServiceInfo;
+
 import org.apache.avro.specific.SpecificRecord;
-import org.apache.commons.cli.*;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -50,23 +82,11 @@ import org.eclipse.leshan.util.Hex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.jmdns.JmDNS;
-import javax.jmdns.ServiceInfo;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.math.BigInteger;
-import java.net.BindException;
-import java.net.InetAddress;
-import java.security.*;
-import java.security.cert.Certificate;
-import java.security.cert.X509Certificate;
-import java.security.spec.*;
-import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.List;
-import java.util.Properties;
+import io.confluent.kafka.serializers.KafkaAvroDeserializer;
+import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
+import io.confluent.kafka.serializers.KafkaAvroSerializer;
+import io.zeelos.leshan.avro.AvroKey;
+import io.zeelos.leshan.avro.request.AvroRequest;
 
 /**
  * The main entry point for the Leshan LWM2M to Kafka forwarder.
@@ -75,24 +95,22 @@ public class LeshanServerKafka {
 
     private static final Logger log = LoggerFactory.getLogger(LeshanServerKafka.class);
 
-    private final static String[] modelPaths = new String[]{"31024.xml",
+    private final static String[] modelPaths = new String[] { "31024.xml",
             /* add modbus support */
             "26241.xml",
 
-            "10241.xml", "10242.xml", "10243.xml", "10244.xml", "10245.xml", "10246.xml", "10247.xml",
-            "10248.xml", "10249.xml", "10250.xml",
+            "10241.xml", "10242.xml", "10243.xml", "10244.xml", "10245.xml", "10246.xml", "10247.xml", "10248.xml",
+            "10249.xml", "10250.xml",
 
-            "2048.xml", "2049.xml", "2050.xml", "2051.xml", "2052.xml", "2053.xml", "2054.xml",
-            "2055.xml", "2056.xml", "2057.xml",
+            "2048.xml", "2049.xml", "2050.xml", "2051.xml", "2052.xml", "2053.xml", "2054.xml", "2055.xml", "2056.xml",
+            "2057.xml",
 
-            "3200.xml", "3201.xml", "3202.xml", "3203.xml", "3300.xml", "3301.xml", "3302.xml",
-            "3303.xml", "3304.xml", "3305.xml", "3306.xml", "3308.xml", "3310.xml", "3311.xml",
-            "3312.xml", "3313.xml", "3314.xml", "3315.xml", "3316.xml", "3317.xml", "3318.xml",
-            "3319.xml", "3320.xml", "3321.xml", "3322.xml", "3323.xml", "3324.xml", "3325.xml",
-            "3326.xml", "3327.xml", "3328.xml", "3329.xml", "3330.xml", "3331.xml", "3332.xml",
-            "3333.xml", "3334.xml", "3335.xml", "3336.xml", "3337.xml", "3338.xml", "3339.xml",
-            "3340.xml", "3341.xml", "3342.xml", "3343.xml", "3344.xml", "3345.xml", "3346.xml",
-            "3347.xml", "3348.xml",
+            "3200.xml", "3201.xml", "3202.xml", "3203.xml", "3300.xml", "3301.xml", "3302.xml", "3303.xml", "3304.xml",
+            "3305.xml", "3306.xml", "3308.xml", "3310.xml", "3311.xml", "3312.xml", "3313.xml", "3314.xml", "3315.xml",
+            "3316.xml", "3317.xml", "3318.xml", "3319.xml", "3320.xml", "3321.xml", "3322.xml", "3323.xml", "3324.xml",
+            "3325.xml", "3326.xml", "3327.xml", "3328.xml", "3329.xml", "3330.xml", "3331.xml", "3332.xml", "3333.xml",
+            "3334.xml", "3335.xml", "3336.xml", "3337.xml", "3338.xml", "3339.xml", "3340.xml", "3341.xml", "3342.xml",
+            "3343.xml", "3344.xml", "3345.xml", "3346.xml", "3347.xml", "3348.xml",
 
             "Communication_Characteristics-V1_0.xml",
 
@@ -101,7 +119,7 @@ public class LeshanServerKafka {
             "LWM2M_Bearer_selection-v1_0.xml", "LWM2M_Portfolio-v1_0.xml", "LWM2M_DevCapMgmt-v1_0.xml",
             "LWM2M_Software_Component-v1_0.xml", "LWM2M_Software_Management-v1_0.xml",
 
-            "Non-Access_Stratum_NAS_configuration-V1_0.xml"};
+            "Non-Access_Stratum_NAS_configuration-V1_0.xml" };
 
     private final static String USAGE = "java -jar leshan-server-demo.jar [OPTION]";
 
@@ -134,10 +152,14 @@ public class LeshanServerKafka {
         options.addOption("mdns", "publishDNSSdServices", false, "Publish leshan's services to DNS Service discovery");
 
         // kafka options
-        options.addOption("kr", "regtopic", true, "Sets the kafka topic where the registration responses would be send.");
-        options.addOption("ko", "observetopic", true, "Sets the kafka topic where the observation responses would be send.");
-        options.addOption("kmr", "mngreqtopic", true, "Sets the kafka topic where the management requests would be send and this server will listen to.");
-        options.addOption("kmp", "mngreptopic", true, "Sets the kafka topic where the management responses would be send.");
+        options.addOption("kr", "regtopic", true,
+                "Sets the kafka topic where the registration responses would be send.");
+        options.addOption("ko", "observetopic", true,
+                "Sets the kafka topic where the observation responses would be send.");
+        options.addOption("kmr", "mngreqtopic", true,
+                "Sets the kafka topic where the management requests would be send and this server will listen to.");
+        options.addOption("kmp", "mngreptopic", true,
+                "Sets the kafka topic where the management responses would be send.");
         options.addOption("kpc", "prdcompress", true, "Sets the compression algorithm for the producer.");
         options.addOption("kpb", "prdbatch", true, "Sets the batch size config for the producer.");
         options.addOption("kpl", "prdlingerms", true, "Sets the linger ms for the producer.");
@@ -218,8 +240,8 @@ public class LeshanServerKafka {
         String kafkaManagementReqTopic = cl.getOptionValue("kmr", System.getenv("KAFKA_TOPIC_MANAGEMENT_REQ"));
         String kafkaManagementRepTopic = cl.getOptionValue("kmp", System.getenv("KAFKA_TOPIC_MANAGEMENT_REP"));
 
-        if (kafkaRegistrationsTopic == null || kafkaObservationsTopic == null
-                || kafkaManagementReqTopic == null || kafkaManagementRepTopic == null) {
+        if (kafkaRegistrationsTopic == null || kafkaObservationsTopic == null || kafkaManagementReqTopic == null
+                || kafkaManagementRepTopic == null) {
             System.err.println("missing kafka topic naming parameters where messages would be send and receive!");
             formatter.printHelp(USAGE, options);
             return;
@@ -252,30 +274,29 @@ public class LeshanServerKafka {
 
         String producerCompressionType = cl.getOptionValue("kpc", System.getenv("KAFKA_PRODUCER_COMPRESSION_TYPE"));
         if (producerCompressionType == null) {
-            producerCompressionType = "none"; //see ProducerConfig.COMPRESSION_TYPE_CONFIG
+            producerCompressionType = "none"; // see ProducerConfig.COMPRESSION_TYPE_CONFIG
         }
 
         String producerBatchSize = cl.getOptionValue("kpb", System.getenv("KAFKA_PRODUCER_BATCH_SIZE_CONFIG"));
         if (producerBatchSize == null) {
-            producerBatchSize = "16384"; //see ProducerConfig.BATCH_SIZE_CONFIG
+            producerBatchSize = "16384"; // see ProducerConfig.BATCH_SIZE_CONFIG
         }
         String producerLingerMs = cl.getOptionValue("kpl", System.getenv("KAFKA_PRODUCER_LINGER_MS"));
         if (producerLingerMs == null) {
-            producerLingerMs = "0"; //see ProducerConfig.LINGER_MS_CONFIG
+            producerLingerMs = "0"; // see ProducerConfig.LINGER_MS_CONFIG
         }
 
         // Get mDNS publish switch
         Boolean publishDNSSdServices = cl.hasOption("mdns");
 
         try {
-            LeshanServer lwm2mServer = createAndStartServer(webPort, localAddress, localPort, secureLocalAddress, secureLocalPort,
-                    modelsFolderPath, keyStorePath, keyStoreType, keyStorePass, keyStoreAlias,
+            LeshanServer lwm2mServer = createAndStartServer(webPort, localAddress, localPort, secureLocalAddress,
+                    secureLocalPort, modelsFolderPath, keyStorePath, keyStoreType, keyStorePass, keyStoreAlias,
                     keyStoreAliasPass, publishDNSSdServices);
 
             KafkaForwarder kafkaForwarder = connectToKafkaBroker(serverId, kafkaBootstrapServer, kafkaSchemaRegistryURL,
                     kafkaRegistrationsTopic, kafkaObservationsTopic, kafkaManagementReqTopic, kafkaManagementRepTopic,
-                    producerCompressionType, producerBatchSize, producerLingerMs,
-                    sslPros, lwm2mServer);
+                    producerCompressionType, producerBatchSize, producerLingerMs, sslPros, lwm2mServer);
 
             // add shutdown hook
             Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -299,11 +320,10 @@ public class LeshanServerKafka {
         }
     }
 
-    public static LeshanServer createAndStartServer(int webPort, String localAddress, int localPort, String secureLocalAddress,
-                                                    int secureLocalPort, String modelsFolderPath, String keyStorePath, String keyStoreType,
-                                                    String keyStorePass, String keyStoreAlias, String keyStoreAliasPass,
-                                                    boolean publishDNSSdServices)
-            throws Exception {
+    public static LeshanServer createAndStartServer(int webPort, String localAddress, int localPort,
+            String secureLocalAddress, int secureLocalPort, String modelsFolderPath, String keyStorePath,
+            String keyStoreType, String keyStorePass, String keyStoreAlias, String keyStoreAliasPass,
+            boolean publishDNSSdServices) throws Exception {
         // Prepare LWM2M server
         LeshanServerBuilder builder = new LeshanServerBuilder();
         builder.setLocalAddress(localAddress, localPort);
@@ -333,7 +353,7 @@ public class LeshanServerKafka {
                 try (FileInputStream fis = new FileInputStream(keyStorePath)) {
                     keyStore.load(fis, keyStorePass == null ? null : keyStorePass.toCharArray());
                     List<Certificate> trustedCertificates = new ArrayList<>();
-                    for (Enumeration<String> aliases = keyStore.aliases(); aliases.hasMoreElements(); ) {
+                    for (Enumeration<String> aliases = keyStore.aliases(); aliases.hasMoreElements();) {
                         String alias = aliases.nextElement();
                         if (keyStore.isCertificateEntry(alias)) {
                             trustedCertificates.add(keyStore.getCertificate(alias));
@@ -435,8 +455,7 @@ public class LeshanServerKafka {
         ServletHolder eventServletHolder = new ServletHolder(eventServlet);
         root.addServlet(eventServletHolder, "/event/*");
 
-        ServletHolder clientServletHolder = new ServletHolder(
-                new ClientServlet(lwServer));
+        ServletHolder clientServletHolder = new ServletHolder(new ClientServlet(lwServer));
         root.addServlet(clientServletHolder, "/api/clients/*");
 
         ServletHolder securityServletHolder = new ServletHolder(new SecurityServlet(securityStore, publicKey));
@@ -472,31 +491,37 @@ public class LeshanServerKafka {
         return lwServer;
     }
 
-    public static KafkaForwarder connectToKafkaBroker(String serverId, String kafkaBootstrapServer, String kafkaSchemaRegistryURL,
-                                                      String kafkaRegistrationsTopic, String kafkaObservationsTopic, String kafkaManagementReqTopic, String kafkaManagementRepTopic,
-                                                      String producerCompressionType, String producerBatchSize, String producerLingerMs,
-                                                      Properties sslProps, LeshanServer lwServer) {
-        log.info("Setting up connection to Kafka broker '{}' and Schema Registry '{}' ", kafkaBootstrapServer, kafkaSchemaRegistryURL);
+    public static KafkaForwarder connectToKafkaBroker(String serverId, String kafkaBootstrapServer,
+            String kafkaSchemaRegistryURL, String kafkaRegistrationsTopic, String kafkaObservationsTopic,
+            String kafkaManagementReqTopic, String kafkaManagementRepTopic, String producerCompressionType,
+            String producerBatchSize, String producerLingerMs, Properties sslProps, LeshanServer lwServer) {
+        log.info("Setting up connection to Kafka broker '{}' and Schema Registry '{}' ", kafkaBootstrapServer,
+                kafkaSchemaRegistryURL);
 
         Properties producerProps = new Properties();
         producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBootstrapServer);
         producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class);
         producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class);
 
-        // TODO: should be really user configurable depending on edge machine capabilities
+        // TODO: should be really user configurable depending on edge machine
+        // capabilities
         producerProps.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, producerCompressionType);
         producerProps.put(ProducerConfig.BATCH_SIZE_CONFIG, Integer.valueOf(producerBatchSize));
         producerProps.put(ProducerConfig.LINGER_MS_CONFIG, Integer.valueOf(producerLingerMs));
         producerProps.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, 300 * 1000); // 5 mins
         /*
-         * "We recommend testing how long it takes to recover from a crashed broker (i.e., how long until all partitions get new leaders)
-         * and setting the number of retries and delay between them such that the total amount of time spent retrying will be longer than
-         * the time it takes the Kafka cluster to recover from the crash—otherwise, the producer will give up too soon."
+         * "We recommend testing how long it takes to recover from a crashed broker
+         * (i.e., how long until all partitions get new leaders) and setting the number
+         * of retries and delay between them such that the total amount of time spent
+         * retrying will be longer than the time it takes the Kafka cluster to recover
+         * from the crash—otherwise, the producer will give up too soon."
          *
-         * Excerpt from "Kafka - The Definitive Guide by Neha Narkhede,‎ Gwen Shapira,‎ Todd Palino"
+         * Excerpt from
+         * "Kafka - The Definitive Guide by Neha Narkhede,‎ Gwen Shapira,‎ Todd Palino"
          */
         producerProps.put(ProducerConfig.RETRIES_CONFIG, 20); // 20 retries
-        producerProps.put(ProducerConfig.RETRY_BACKOFF_MS_CONFIG, 6000); // 6 sec's between retries (in total wait ~2 min before giving up)
+        producerProps.put(ProducerConfig.RETRY_BACKOFF_MS_CONFIG, 6000); // 6 sec's between retries (in total wait ~2
+                                                                         // min before giving up)
 
         producerProps.put("schema.registry.url", kafkaSchemaRegistryURL);
 
@@ -520,13 +545,8 @@ public class LeshanServerKafka {
         KafkaConsumer<AvroKey, AvroRequest> consumer = new KafkaConsumer<>(consumerProps);
 
         // setup forwarder and start
-        KafkaForwarder forwarder = new KafkaForwarder(lwServer,
-                serverId,
-                kafkaRegistrationsTopic,
-                kafkaObservationsTopic,
-                kafkaManagementReqTopic,
-                kafkaManagementRepTopic,
-                producer, consumer);
+        KafkaForwarder forwarder = new KafkaForwarder(lwServer, serverId, kafkaRegistrationsTopic,
+                kafkaObservationsTopic, kafkaManagementReqTopic, kafkaManagementRepTopic, producer, consumer);
         forwarder.start();
 
         return forwarder;

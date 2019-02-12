@@ -14,13 +14,30 @@
 
 package io.zeelos.leshan.server.kafka.serialization.avro;
 
-import io.zeelos.leshan.avro.resource.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
 import org.eclipse.leshan.core.model.ResourceModel.Type;
-import org.eclipse.leshan.core.node.*;
+import org.eclipse.leshan.core.node.LwM2mMultipleResource;
+import org.eclipse.leshan.core.node.LwM2mNode;
+import org.eclipse.leshan.core.node.LwM2mObject;
+import org.eclipse.leshan.core.node.LwM2mObjectInstance;
+import org.eclipse.leshan.core.node.LwM2mPath;
+import org.eclipse.leshan.core.node.LwM2mResource;
+import org.eclipse.leshan.core.node.LwM2mSingleResource;
 import org.eclipse.leshan.util.Base64;
 
-import java.util.*;
-import java.util.Map.Entry;
+import io.zeelos.leshan.avro.resource.AvroInstanceResource;
+import io.zeelos.leshan.avro.resource.AvroMultipleResource;
+import io.zeelos.leshan.avro.resource.AvroObjectResource;
+import io.zeelos.leshan.avro.resource.AvroResource;
+import io.zeelos.leshan.avro.resource.AvroResourceKind;
+import io.zeelos.leshan.avro.resource.AvroType;
 
 /**
  * Functions for serialize and deserialize a LWM2M node in Avro.
@@ -72,15 +89,17 @@ public class LwM2mNodeSerDes {
         aInstBuilder.setKind(AvroResourceKind.INSTANCE);
 
         List<AvroResource> aResources = new ArrayList<>();
-        List<AvroMultipleResource> aMultipleResources = null;  // lazy load
+        List<AvroMultipleResource> aMultipleResources = null; // lazy load
 
         for (LwM2mResource resource : instance.getResources().values()) {
             if (resource.isMultiInstances()) {
                 if (aMultipleResources == null)
                     aMultipleResources = new ArrayList<>();
-                aMultipleResources.add(serializeMultipleResource(new LwM2mPath(path.getObjectId(), path.getObjectInstanceId(), resource.getId()), resource));
+                aMultipleResources.add(serializeMultipleResource(
+                        new LwM2mPath(path.getObjectId(), path.getObjectInstanceId(), resource.getId()), resource));
             } else {
-                aResources.add(serializeSingleResource(new LwM2mPath(path.getObjectId(), path.getObjectInstanceId(), resource.getId()), resource));
+                aResources.add(serializeSingleResource(
+                        new LwM2mPath(path.getObjectId(), path.getObjectInstanceId(), resource.getId()), resource));
             }
         }
 
@@ -121,7 +140,9 @@ public class LwM2mNodeSerDes {
         for (Entry<Integer, ?> entry : resource.getValues().entrySet()) {
             AvroResource.Builder aSingleBuilder = AvroResource.newBuilder();
             aSingleBuilder.setId(entry.getKey());
-            aSingleBuilder.setPath(new LwM2mPath(path.getObjectId(), path.getObjectInstanceId(), path.getResourceId(), entry.getKey()).toString());
+            aSingleBuilder.setPath(
+                    new LwM2mPath(path.getObjectId(), path.getObjectInstanceId(), path.getResourceId(), entry.getKey())
+                            .toString());
             aSingleBuilder.setKind(AvroResourceKind.SINGLE_RESOURCE);
             aSingleBuilder.setType(AvroType.valueOf(resource.getType().name()));
             aSingleBuilder.setValue(aValue(resource.getType(), entry.getValue()));
@@ -142,8 +163,7 @@ public class LwM2mNodeSerDes {
             values.put(Integer.valueOf(aEntry.getKey()), aEntry.getValue());
         }
 
-        return LwM2mMultipleResource
-                .newResource(aResource.getId(), values, Type.valueOf(aResource.getType().name()));
+        return LwM2mMultipleResource.newResource(aResource.getId(), values, Type.valueOf(aResource.getType().name()));
     }
 
     private static AvroResource serializeSingleResource(LwM2mPath path, LwM2mResource resource) {
@@ -159,8 +179,8 @@ public class LwM2mNodeSerDes {
     }
 
     private static LwM2mSingleResource deserializeSingleResource(AvroResource aResource) {
-        return LwM2mSingleResource
-                .newResource(aResource.getId(), aResource.getValue(), Type.valueOf(aResource.getType().name()));
+        return LwM2mSingleResource.newResource(aResource.getId(), aResource.getValue(),
+                Type.valueOf(aResource.getType().name()));
     }
 
     private static Object serializeResource(LwM2mPath path, LwM2mResource resource) {

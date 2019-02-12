@@ -14,23 +14,38 @@
 
 package io.zeelos.leshan.server.kafka.serialization.avro;
 
-import io.zeelos.leshan.avro.request.AvroRequestKind;
-import io.zeelos.leshan.avro.response.*;
-import io.zeelos.leshan.server.kafka.utils.AvroSerializer;
+import java.util.Arrays;
+
 import org.eclipse.leshan.Link;
 import org.eclipse.leshan.ResponseCode;
 import org.eclipse.leshan.core.node.LwM2mNode;
 import org.eclipse.leshan.core.node.LwM2mPath;
-import org.eclipse.leshan.core.response.*;
+import org.eclipse.leshan.core.response.CreateResponse;
+import org.eclipse.leshan.core.response.DeleteResponse;
+import org.eclipse.leshan.core.response.DiscoverResponse;
+import org.eclipse.leshan.core.response.ExecuteResponse;
+import org.eclipse.leshan.core.response.LwM2mResponse;
+import org.eclipse.leshan.core.response.ReadResponse;
+import org.eclipse.leshan.core.response.WriteAttributesResponse;
+import org.eclipse.leshan.core.response.WriteResponse;
 
-import java.util.Arrays;
+import io.zeelos.leshan.avro.request.AvroRequestKind;
+import io.zeelos.leshan.avro.response.AvroCreateResponse;
+import io.zeelos.leshan.avro.response.AvroDiscoverResponse;
+import io.zeelos.leshan.avro.response.AvroGenericResponse;
+import io.zeelos.leshan.avro.response.AvroReadResponseBody;
+import io.zeelos.leshan.avro.response.AvroResponse;
+import io.zeelos.leshan.avro.response.AvroResponseCode;
+import io.zeelos.leshan.avro.response.AvroResponsePayload;
+import io.zeelos.leshan.server.kafka.utils.AvroSerializer;
 
 /**
  * Functions for serialize and deserialize a LWM2M response in Avro.
  */
 public class ResponseSerDes {
 
-    public static AvroResponse aSerialize(String serverId, String ticket, String endpoint, LwM2mPath path, AvroRequestKind kind, LwM2mResponse response) {
+    public static AvroResponse aSerialize(String serverId, String ticket, String endpoint, LwM2mPath path,
+            AvroRequestKind kind, LwM2mResponse response) {
         AvroResponse.Builder aResponseBuilder = AvroResponse.newBuilder();
         aResponseBuilder.setServerId(serverId);
         aResponseBuilder.setTimestamp(System.currentTimeMillis());
@@ -44,7 +59,8 @@ public class ResponseSerDes {
 
         if (response.isFailure()) {
             AvroGenericResponse.Builder aGenericResponseBuilder = AvroGenericResponse.newBuilder();
-            aGenericResponseBuilder.setMessage(response.getErrorMessage().equals("") ? response.getCode().getName() : response.getErrorMessage());
+            aGenericResponseBuilder.setMessage(
+                    response.getErrorMessage().equals("") ? response.getCode().getName() : response.getErrorMessage());
             aResponsePayloadBuilder.setBody(aGenericResponseBuilder.build());
 
             aResponseBuilder.setRep(aResponsePayloadBuilder.build());
@@ -87,7 +103,8 @@ public class ResponseSerDes {
         return aResponseBuilder.build();
     }
 
-    public static byte[] bSerialize(String serverId, String ticket, String endpoint, LwM2mPath path, AvroRequestKind kind, LwM2mResponse response) throws Exception {
+    public static byte[] bSerialize(String serverId, String ticket, String endpoint, LwM2mPath path,
+            AvroRequestKind kind, LwM2mResponse response) throws Exception {
         return AvroSerializer.toBytes(aSerialize(serverId, ticket, endpoint, path, kind, response), AvroResponse.class);
     }
 
@@ -103,25 +120,25 @@ public class ResponseSerDes {
         AvroRequestKind kind = aResponsePayload.getKind();
 
         switch (kind) {
-            case read:
-                LwM2mNode readContent = LwM2mNodeSerDes.deserialize(aResponsePayload.getBody());
-                return new ReadResponse(code, readContent, null);
-            case discover:
-                String objectLinks = ((AvroDiscoverResponse) aResponsePayload.getBody()).getObjectLinks();
-                return new DiscoverResponse(code, Link.parse(objectLinks.getBytes()), null);
-            case create:
-                String location = ((AvroCreateResponse) aResponsePayload.getBody()).getLocation();
-                return new CreateResponse(code, location, null);
-            case delete:
-                return new DeleteResponse(code, null);
-            case execute:
-                return new ExecuteResponse(code, null);
-            case writeAttributes:
-                return new WriteAttributesResponse(code, null);
-            case write:
-                return new WriteResponse(code, null);
-            default:
-                throw new IllegalStateException("Invalid request missing kind attribute");
+        case read:
+            LwM2mNode readContent = LwM2mNodeSerDes.deserialize(aResponsePayload.getBody());
+            return new ReadResponse(code, readContent, null);
+        case discover:
+            String objectLinks = ((AvroDiscoverResponse) aResponsePayload.getBody()).getObjectLinks();
+            return new DiscoverResponse(code, Link.parse(objectLinks.getBytes()), null);
+        case create:
+            String location = ((AvroCreateResponse) aResponsePayload.getBody()).getLocation();
+            return new CreateResponse(code, location, null);
+        case delete:
+            return new DeleteResponse(code, null);
+        case execute:
+            return new ExecuteResponse(code, null);
+        case writeAttributes:
+            return new WriteAttributesResponse(code, null);
+        case write:
+            return new WriteResponse(code, null);
+        default:
+            throw new IllegalStateException("Invalid request missing kind attribute");
         }
     }
 }

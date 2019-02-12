@@ -14,15 +14,33 @@
 
 package io.zeelos.leshan.server.kafka.serialization.avro;
 
-import io.zeelos.leshan.avro.request.*;
-import io.zeelos.leshan.avro.resource.AvroInstanceResource;
-import io.zeelos.leshan.server.kafka.utils.AvroSerializer;
-
 import org.eclipse.leshan.core.attributes.AttributeSet;
 import org.eclipse.leshan.core.node.LwM2mNode;
 import org.eclipse.leshan.core.node.LwM2mObjectInstance;
-import org.eclipse.leshan.core.request.*;
+import org.eclipse.leshan.core.request.ContentFormat;
+import org.eclipse.leshan.core.request.CreateRequest;
+import org.eclipse.leshan.core.request.DeleteRequest;
+import org.eclipse.leshan.core.request.DiscoverRequest;
+import org.eclipse.leshan.core.request.DownLinkRequestVisitorAdapter;
+import org.eclipse.leshan.core.request.DownlinkRequest;
+import org.eclipse.leshan.core.request.ExecuteRequest;
+import org.eclipse.leshan.core.request.ObserveRequest;
+import org.eclipse.leshan.core.request.ReadRequest;
+import org.eclipse.leshan.core.request.WriteAttributesRequest;
+import org.eclipse.leshan.core.request.WriteRequest;
 import org.eclipse.leshan.core.request.WriteRequest.Mode;
+
+import io.zeelos.leshan.avro.request.AvroContentFormat;
+import io.zeelos.leshan.avro.request.AvroCreateRequest;
+import io.zeelos.leshan.avro.request.AvroExecuteRequest;
+import io.zeelos.leshan.avro.request.AvroRequest;
+import io.zeelos.leshan.avro.request.AvroRequestKind;
+import io.zeelos.leshan.avro.request.AvroRequestPayload;
+import io.zeelos.leshan.avro.request.AvroWriteAttributesRequest;
+import io.zeelos.leshan.avro.request.AvroWriteRequest;
+import io.zeelos.leshan.avro.request.AvroWriteRequestMode;
+import io.zeelos.leshan.avro.resource.AvroInstanceResource;
+import io.zeelos.leshan.server.kafka.utils.AvroSerializer;
 
 /**
  * Functions for serialize and deserialize a LWM2M Downlink request in Avro.
@@ -45,7 +63,8 @@ public class DownlinkRequestSerDes {
                 aRequestPayloadBuilder.setKind(AvroRequestKind.observe);
 
                 if (request.getContentFormat() != null) {
-                    aRequestPayloadBuilder.setContentFormat(AvroContentFormat.valueOf(request.getContentFormat().getName()));
+                    aRequestPayloadBuilder
+                            .setContentFormat(AvroContentFormat.valueOf(request.getContentFormat().getName()));
                 }
             }
 
@@ -62,11 +81,12 @@ public class DownlinkRequestSerDes {
             @Override
             public void visit(CreateRequest request) {
                 aRequestPayloadBuilder.setKind(AvroRequestKind.create);
-                aRequestPayloadBuilder.setContentFormat(AvroContentFormat.valueOf(request.getContentFormat().getName()));
+                aRequestPayloadBuilder
+                        .setContentFormat(AvroContentFormat.valueOf(request.getContentFormat().getName()));
 
                 AvroCreateRequest.Builder aCreateRequestBuilder = AvroCreateRequest.newBuilder();
-                aCreateRequestBuilder.setInstance((AvroInstanceResource) LwM2mNodeSerDes.aSerialize
-                        (request.getPath(), new LwM2mObjectInstance(request.getInstanceId(), request.getResources())));
+                aCreateRequestBuilder.setInstance((AvroInstanceResource) LwM2mNodeSerDes.aSerialize(request.getPath(),
+                        new LwM2mObjectInstance(request.getInstanceId(), request.getResources())));
 
                 aRequestPayloadBuilder.setBody(aCreateRequestBuilder.build());
             }
@@ -85,7 +105,8 @@ public class DownlinkRequestSerDes {
             public void visit(WriteAttributesRequest request) {
                 aRequestPayloadBuilder.setKind(AvroRequestKind.writeAttributes);
 
-                AvroWriteAttributesRequest.Builder aWriteAttributesRequestBuilder = AvroWriteAttributesRequest.newBuilder();
+                AvroWriteAttributesRequest.Builder aWriteAttributesRequestBuilder = AvroWriteAttributesRequest
+                        .newBuilder();
                 aWriteAttributesRequestBuilder.setObserveSpec(request.getAttributes().toString());
 
                 aRequestPayloadBuilder.setBody(aWriteAttributesRequestBuilder.build());
@@ -94,10 +115,12 @@ public class DownlinkRequestSerDes {
             @Override
             public void visit(WriteRequest request) {
                 aRequestPayloadBuilder.setKind(AvroRequestKind.write);
-                aRequestPayloadBuilder.setContentFormat(AvroContentFormat.valueOf(request.getContentFormat().getName()));
+                aRequestPayloadBuilder
+                        .setContentFormat(AvroContentFormat.valueOf(request.getContentFormat().getName()));
 
                 AvroWriteRequest.Builder aWriteRequestBuilder = AvroWriteRequest.newBuilder();
-                aWriteRequestBuilder.setMode(request.isPartialUpdateRequest() ? AvroWriteRequestMode.UPDATE : AvroWriteRequestMode.REPLACE);
+                aWriteRequestBuilder.setMode(
+                        request.isPartialUpdateRequest() ? AvroWriteRequestMode.UPDATE : AvroWriteRequestMode.REPLACE);
                 aWriteRequestBuilder.setNode(LwM2mNodeSerDes.aSerialize(request.getPath(), request.getNode()));
 
                 aRequestPayloadBuilder.setBody(aWriteRequestBuilder.build());
@@ -106,7 +129,8 @@ public class DownlinkRequestSerDes {
             @Override
             public void visit(ReadRequest request) {
                 aRequestPayloadBuilder.setKind(AvroRequestKind.read);
-                aRequestPayloadBuilder.setContentFormat(AvroContentFormat.valueOf(request.getContentFormat().getName()));
+                aRequestPayloadBuilder
+                        .setContentFormat(AvroContentFormat.valueOf(request.getContentFormat().getName()));
             }
         });
 
@@ -119,7 +143,6 @@ public class DownlinkRequestSerDes {
         return AvroSerializer.toBytes(aSerialize(ticket, endpoint, r), AvroRequest.class);
     }
 
-
     public static DownlinkRequest<?> deserialize(AvroRequest avroRequest) {
         AvroRequestPayload aRequestPayload = avroRequest.getPayload();
 
@@ -128,36 +151,37 @@ public class DownlinkRequestSerDes {
         AvroRequestKind avroKind = aRequestPayload.getKind();
 
         switch (avroKind) {
-            case observe:
-                return new ObserveRequest(ContentFormat.fromName(aContentFormat.name()), path);
-            case delete:
-                return new DeleteRequest(path);
-            case discover:
-                return new DiscoverRequest(path);
-            case create:
-                AvroCreateRequest aCreateRequest = (AvroCreateRequest) aRequestPayload.getBody();
-                LwM2mObjectInstance objInstance = (LwM2mObjectInstance) LwM2mNodeSerDes.deserialize(aCreateRequest.getInstance());
-                return new CreateRequest(ContentFormat.fromName(aContentFormat.name()), path, objInstance);
-            case execute:
-                AvroExecuteRequest aExecuteRequest = (AvroExecuteRequest) aRequestPayload.getBody();
-                String parameters = aExecuteRequest.getParameters();
-                return new ExecuteRequest(path, parameters);
-            case writeAttributes:
-                AvroWriteAttributesRequest aWriteAttributesRequest = (AvroWriteAttributesRequest) aRequestPayload.getBody();
-                String observeSpec = aWriteAttributesRequest.getObserveSpec();
-                return new WriteAttributesRequest(path, AttributeSet.parse(observeSpec));
-            case write:
-                AvroWriteRequest aWriteRequest = (AvroWriteRequest) aRequestPayload.getBody();
-                AvroWriteRequestMode aWriteRequestMode = aWriteRequest.getMode();
+        case observe:
+            return new ObserveRequest(ContentFormat.fromName(aContentFormat.name()), path);
+        case delete:
+            return new DeleteRequest(path);
+        case discover:
+            return new DiscoverRequest(path);
+        case create:
+            AvroCreateRequest aCreateRequest = (AvroCreateRequest) aRequestPayload.getBody();
+            LwM2mObjectInstance objInstance = (LwM2mObjectInstance) LwM2mNodeSerDes
+                    .deserialize(aCreateRequest.getInstance());
+            return new CreateRequest(ContentFormat.fromName(aContentFormat.name()), path, objInstance);
+        case execute:
+            AvroExecuteRequest aExecuteRequest = (AvroExecuteRequest) aRequestPayload.getBody();
+            String parameters = aExecuteRequest.getParameters();
+            return new ExecuteRequest(path, parameters);
+        case writeAttributes:
+            AvroWriteAttributesRequest aWriteAttributesRequest = (AvroWriteAttributesRequest) aRequestPayload.getBody();
+            String observeSpec = aWriteAttributesRequest.getObserveSpec();
+            return new WriteAttributesRequest(path, AttributeSet.parse(observeSpec));
+        case write:
+            AvroWriteRequest aWriteRequest = (AvroWriteRequest) aRequestPayload.getBody();
+            AvroWriteRequestMode aWriteRequestMode = aWriteRequest.getMode();
 
-                Mode mode = Mode.valueOf(aWriteRequestMode.name());
+            Mode mode = Mode.valueOf(aWriteRequestMode.name());
 
-                LwM2mNode node = LwM2mNodeSerDes.deserialize(aWriteRequest.getNode());
-                return new WriteRequest(mode, ContentFormat.fromName(aContentFormat.name()), path, node);
-            case read:
-                return new ReadRequest(ContentFormat.fromName(aContentFormat.name()), path);
-            default:
-                throw new IllegalStateException("Invalid request missing kind attribute");
+            LwM2mNode node = LwM2mNodeSerDes.deserialize(aWriteRequest.getNode());
+            return new WriteRequest(mode, ContentFormat.fromName(aContentFormat.name()), path, node);
+        case read:
+            return new ReadRequest(ContentFormat.fromName(aContentFormat.name()), path);
+        default:
+            throw new IllegalStateException("Invalid request missing kind attribute");
         }
     }
 }

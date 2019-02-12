@@ -14,12 +14,15 @@
 
 package io.zeelos.leshan.server.kafka;
 
-import io.zeelos.leshan.avro.AvroKey;
-import io.zeelos.leshan.avro.registration.AvroRegistrationResponse;
-import io.zeelos.leshan.avro.request.AvroRequest;
-import io.zeelos.leshan.avro.request.AvroRequestKind;
-import io.zeelos.leshan.avro.response.*;
-import io.zeelos.leshan.server.kafka.serialization.avro.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.avro.specific.SpecificRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -44,14 +47,21 @@ import org.eclipse.leshan.util.NamedThreadFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import io.zeelos.leshan.avro.AvroKey;
+import io.zeelos.leshan.avro.registration.AvroRegistrationResponse;
+import io.zeelos.leshan.avro.request.AvroRequest;
+import io.zeelos.leshan.avro.request.AvroRequestKind;
+import io.zeelos.leshan.avro.response.AvroGenericResponse;
+import io.zeelos.leshan.avro.response.AvroResponse;
+import io.zeelos.leshan.avro.response.AvroResponseCode;
+import io.zeelos.leshan.avro.response.AvroResponseObserve;
+import io.zeelos.leshan.avro.response.AvroResponsePayload;
+import io.zeelos.leshan.server.kafka.serialization.avro.DownlinkRequestSerDes;
+import io.zeelos.leshan.server.kafka.serialization.avro.RegistrationDeleteSerDes;
+import io.zeelos.leshan.server.kafka.serialization.avro.RegistrationSerDes;
+import io.zeelos.leshan.server.kafka.serialization.avro.RegistrationUpdateSerDes;
+import io.zeelos.leshan.server.kafka.serialization.avro.ResponseObserveSerDes;
+import io.zeelos.leshan.server.kafka.serialization.avro.ResponseSerDes;
 
 /**
  * Responsible for forwarding LWM2M messages to a Kafka broker.
@@ -84,9 +94,9 @@ public class KafkaForwarder implements RegistrationListener, ObservationListener
     private final ExecutorService executorReqRepService;
     private final ExecutorService executorObserveService;
 
-    public KafkaForwarder(LwM2mServer server, String serverId,
-                          String kafkaRegistrationsTopic, String kafkaObservationsTopic, String kafkaManagementReqTopic, String kafkaManagementRepTopic,
-                          KafkaProducer<AvroKey, ? extends SpecificRecord> producer, KafkaConsumer<AvroKey, AvroRequest> consumer) {
+    public KafkaForwarder(LwM2mServer server, String serverId, String kafkaRegistrationsTopic,
+            String kafkaObservationsTopic, String kafkaManagementReqTopic, String kafkaManagementRepTopic,
+            KafkaProducer<AvroKey, ? extends SpecificRecord> producer, KafkaConsumer<AvroKey, AvroRequest> consumer) {
         this.server = server;
         this.producer = producer;
         this.consumer = consumer;
@@ -102,11 +112,11 @@ public class KafkaForwarder implements RegistrationListener, ObservationListener
         this.kafkaManagementReqTopic = kafkaManagementReqTopic;
         this.kafkaManagementRepTopic = kafkaManagementRepTopic;
 
-        this.executorReqRepService = Executors.newCachedThreadPool(
-                new NamedThreadFactory("KafkaForwarder reg/req/rep handler %d"));
+        this.executorReqRepService = Executors
+                .newCachedThreadPool(new NamedThreadFactory("KafkaForwarder reg/req/rep handler %d"));
 
-        this.executorObserveService = Executors.newCachedThreadPool(
-                new NamedThreadFactory("KafkaForwarder observation handler %d"));
+        this.executorObserveService = Executors
+                .newCachedThreadPool(new NamedThreadFactory("KafkaForwarder observation handler %d"));
     }
 
     public void start() {
@@ -123,14 +133,14 @@ public class KafkaForwarder implements RegistrationListener, ObservationListener
 
     /* *************** Leshan Registration API **************** */
     @Override
-    public void registered(final Registration reg, Registration
-            previousReg, Collection<Observation> previousObsersations) {
+    public void registered(final Registration reg, Registration previousReg,
+            Collection<Observation> previousObsersations) {
         executorReqRepService.submit(() -> {
             try {
                 AvroRegistrationResponse avroReg = RegistrationSerDes.aSerialize(serverId, reg);
 
-                ProducerRecord<AvroKey, AvroRegistrationResponse> record =
-                        new ProducerRecord<>(kafkaRegistrationsTopic, AvroKey.newBuilder().setEp(reg.getEndpoint()).build(), avroReg);
+                ProducerRecord<AvroKey, AvroRegistrationResponse> record = new ProducerRecord<>(kafkaRegistrationsTopic,
+                        AvroKey.newBuilder().setEp(reg.getEndpoint()).build(), avroReg);
 
                 publishMessage(record);
 
@@ -142,13 +152,14 @@ public class KafkaForwarder implements RegistrationListener, ObservationListener
 
     @Override
     public void updated(final RegistrationUpdate update, final Registration updatedRegistration,
-                        final Registration previousRegistration) {
+            final Registration previousRegistration) {
         executorReqRepService.submit(() -> {
             try {
-                AvroRegistrationResponse avroRegUpdate = RegistrationUpdateSerDes.aSerialize(serverId, update, updatedRegistration);
+                AvroRegistrationResponse avroRegUpdate = RegistrationUpdateSerDes.aSerialize(serverId, update,
+                        updatedRegistration);
 
-                ProducerRecord<AvroKey, AvroRegistrationResponse> record =
-                        new ProducerRecord<>(kafkaRegistrationsTopic, AvroKey.newBuilder().setEp(updatedRegistration.getEndpoint()).build(), avroRegUpdate);
+                ProducerRecord<AvroKey, AvroRegistrationResponse> record = new ProducerRecord<>(kafkaRegistrationsTopic,
+                        AvroKey.newBuilder().setEp(updatedRegistration.getEndpoint()).build(), avroRegUpdate);
 
                 publishMessage(record);
 
@@ -159,14 +170,14 @@ public class KafkaForwarder implements RegistrationListener, ObservationListener
     }
 
     @Override
-    public void unregistered(final Registration reg, Collection<Observation> observations,
-                             boolean expired, Registration newReg) {
+    public void unregistered(final Registration reg, Collection<Observation> observations, boolean expired,
+            Registration newReg) {
         executorReqRepService.submit(() -> {
             try {
                 AvroRegistrationResponse avroReg = RegistrationDeleteSerDes.aSerialize(serverId, expired, reg);
 
-                ProducerRecord<AvroKey, AvroRegistrationResponse> record =
-                        new ProducerRecord<>(kafkaRegistrationsTopic, AvroKey.newBuilder().setEp(reg.getEndpoint()).build(), avroReg);
+                ProducerRecord<AvroKey, AvroRegistrationResponse> record = new ProducerRecord<>(kafkaRegistrationsTopic,
+                        AvroKey.newBuilder().setEp(reg.getEndpoint()).build(), avroReg);
 
                 publishMessage(record);
 
@@ -189,7 +200,7 @@ public class KafkaForwarder implements RegistrationListener, ObservationListener
 
     @Override
     public void onResponse(final Observation observation, final Registration registration,
-                           final ObserveResponse response) {
+            final ObserveResponse response) {
         executorObserveService.submit(() -> {
             String ticket = null;
 
@@ -200,8 +211,8 @@ public class KafkaForwarder implements RegistrationListener, ObservationListener
 
             } catch (Exception e) {
                 if (ticket != null)
-                    sendError(AvroRequestKind.observe, observation.getPath().toString(), AvroResponseCode.INTERNAL_SERVER_ERROR,
-                            e.getMessage(), ticket);
+                    sendError(AvroRequestKind.observe, observation.getPath().toString(),
+                            AvroResponseCode.INTERNAL_SERVER_ERROR, e.getMessage(), ticket);
 
                 log.error("Exception occurred:", e);
             }
@@ -222,7 +233,7 @@ public class KafkaForwarder implements RegistrationListener, ObservationListener
         });
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     private void handleRequest(final String ticket, final AvroRequest message) {
         log.debug(message.toString());
 
@@ -233,8 +244,7 @@ public class KafkaForwarder implements RegistrationListener, ObservationListener
         if (destination == null) {
             sendError(message.getPayload().getKind(), /* copy the original request kind */
                     message.getPayload().getPath(), /* copy the original request path */
-                    AvroResponseCode.NOT_FOUND,
-                    String.format("No registration for this endpoint '%s'", endpoint),
+                    AvroResponseCode.NOT_FOUND, String.format("No registration for this endpoint '%s'", endpoint),
                     ticket);
             return;
         }
@@ -256,9 +266,9 @@ public class KafkaForwarder implements RegistrationListener, ObservationListener
                 log.error("Exception occured: ", e);
             }
         }, e -> {
-            //throws runtime exception with message:null
-            //try to append the class name as an indication
-            //of the error
+            // throws runtime exception with message:null
+            // try to append the class name as an indication
+            // of the error
             sendError(message.getPayload().getKind(), /* copy the original request kind */
                     message.getPayload().getPath(), /* copy the original request path */
                     AvroResponseCode.INTERNAL_SERVER_ERROR,
@@ -271,15 +281,15 @@ public class KafkaForwarder implements RegistrationListener, ObservationListener
         AvroResponseObserve payload = ResponseObserveSerDes.aSerialize(serverId, ticket, endpoint, response);
 
         // construct kafka message
-        ProducerRecord<AvroKey, AvroResponseObserve> record =
-                new ProducerRecord<>(kafkaObservationsTopic, AvroKey.newBuilder().setEp(endpoint).build(), payload);
+        ProducerRecord<AvroKey, AvroResponseObserve> record = new ProducerRecord<>(kafkaObservationsTopic,
+                AvroKey.newBuilder().setEp(endpoint).build(), payload);
 
         // finally, publish to kafka
         publishMessage(record);
     }
 
-    private void handleResponse(String ticket, String endpoint, LwM2mPath path, AvroRequestKind kind, LwM2mResponse response) throws
-            Exception {
+    private void handleResponse(String ticket, String endpoint, LwM2mPath path, AvroRequestKind kind,
+            LwM2mResponse response) throws Exception {
         // if OBSERVE response update observatioIdToTicket mapping
         if (response instanceof ObserveResponse) {
             Observation observation = ((ObserveResponse) response).getObservation();
@@ -290,17 +300,18 @@ public class KafkaForwarder implements RegistrationListener, ObservationListener
         AvroResponse payload = ResponseSerDes.aSerialize(serverId, ticket, endpoint, path, kind, response);
 
         // construct kafka message
-        ProducerRecord<AvroKey, AvroResponse> record =
-                new ProducerRecord<>(kafkaManagementRepTopic, AvroKey.newBuilder().setEp(endpoint).build(), payload);
+        ProducerRecord<AvroKey, AvroResponse> record = new ProducerRecord<>(kafkaManagementRepTopic,
+                AvroKey.newBuilder().setEp(endpoint).build(), payload);
 
         // finally, publish to kafka
         publishMessage(record);
     }
 
-    private void sendError(final AvroRequestKind kind, String path, final AvroResponseCode code, final String error, final String ticket) {
+    private void sendError(final AvroRequestKind kind, String path, final AvroResponseCode code, final String error,
+            final String ticket) {
         AvroResponse.Builder builder = AvroResponse.newBuilder();
         builder.setServerId(serverId);
-        builder.setEp(serverId);  // set both on error
+        builder.setEp(serverId); // set both on error
         builder.setTicket(ticket);
         builder.setPath(path);
         builder.setTimestamp(System.currentTimeMillis());
@@ -316,8 +327,8 @@ public class KafkaForwarder implements RegistrationListener, ObservationListener
         builder.setRep(payloadBuilder.build());
 
         // construct kafka message
-        ProducerRecord<AvroKey, AvroResponse> record =
-                new ProducerRecord<>(kafkaManagementRepTopic, AvroKey.newBuilder().setEp(serverId).build(), builder.build());
+        ProducerRecord<AvroKey, AvroResponse> record = new ProducerRecord<>(kafkaManagementRepTopic,
+                AvroKey.newBuilder().setEp(serverId).build(), builder.build());
 
         // finally, publish to kafka
         publishMessage(record);

@@ -14,15 +14,24 @@
 
 package io.zeelos.leshan.server.kafka.serialization.avro;
 
-import io.zeelos.leshan.avro.registration.*;
-import io.zeelos.leshan.server.kafka.utils.AvroSerializer;
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.eclipse.leshan.Link;
 import org.eclipse.leshan.core.request.BindingMode;
 import org.eclipse.leshan.core.request.Identity;
 import org.eclipse.leshan.server.registration.Registration;
 
-import java.net.InetSocketAddress;
-import java.util.*;
+import io.zeelos.leshan.avro.registration.AvroBnd;
+import io.zeelos.leshan.avro.registration.AvroLink;
+import io.zeelos.leshan.avro.registration.AvroRegistrationKind;
+import io.zeelos.leshan.avro.registration.AvroRegistrationNew;
+import io.zeelos.leshan.avro.registration.AvroRegistrationResponse;
+import io.zeelos.leshan.server.kafka.utils.AvroSerializer;
 
 /**
  * Functions for serialize and deserialize a Client in Avro.
@@ -33,18 +42,12 @@ public class RegistrationSerDes {
         AvroRegistrationResponse.Builder aRegistrationResponseBuilder = AvroRegistrationResponse.newBuilder();
         aRegistrationResponseBuilder.setKind(AvroRegistrationKind.NEW);
 
-        AvroRegistrationNew.Builder aRegistrationNewBuilder = AvroRegistrationNew.newBuilder()
-                .setRegId(r.getId())
-                .setServerId(serverId)
-                .setEp(r.getEndpoint())
-                .setRegDate(r.getRegistrationDate().getTime())
-                .setAddress(r.getAddress().getHostAddress())
-                .setPort(r.getPort())
+        AvroRegistrationNew.Builder aRegistrationNewBuilder = AvroRegistrationNew.newBuilder().setRegId(r.getId())
+                .setServerId(serverId).setEp(r.getEndpoint()).setRegDate(r.getRegistrationDate().getTime())
+                .setAddress(r.getAddress().getHostAddress()).setPort(r.getPort())
                 .setRegAddr(r.getRegistrationEndpointAddress().getHostString())
-                .setRegPort(r.getRegistrationEndpointAddress().getPort())
-                .setLt(r.getLifeTimeInSec())
-                .setSms(r.getSmsNumber())
-                .setVer(r.getLwM2mVersion())
+                .setRegPort(r.getRegistrationEndpointAddress().getPort()).setLt(r.getLifeTimeInSec())
+                .setSms(r.getSmsNumber()).setVer(r.getLwM2mVersion())
                 .setBnd(AvroBnd.valueOf(r.getBindingMode().name()));
 
         List<AvroLink> links = new ArrayList<>();
@@ -77,10 +80,10 @@ public class RegistrationSerDes {
     }
 
     public static Registration deserialize(AvroRegistrationResponse response) {
-        AvroRegistrationNew aObj = (AvroRegistrationNew)response.getBody();
+        AvroRegistrationNew aObj = (AvroRegistrationNew) response.getBody();
 
-        Registration.Builder aRegistrationBuilder = new Registration.Builder(aObj.getRegId(), aObj.getEp(),
-                Identity.unsecure(new InetSocketAddress(aObj.getAddress(), aObj.getPort()).getAddress(), aObj.getPort()),
+        Registration.Builder aRegistrationBuilder = new Registration.Builder(aObj.getRegId(), aObj.getEp(), Identity
+                .unsecure(new InetSocketAddress(aObj.getAddress(), aObj.getPort()).getAddress(), aObj.getPort()),
                 new InetSocketAddress(aObj.getRegAddr(), aObj.getRegPort()));
 
         aRegistrationBuilder.bindingMode(BindingMode.valueOf(aObj.getBnd().name()));

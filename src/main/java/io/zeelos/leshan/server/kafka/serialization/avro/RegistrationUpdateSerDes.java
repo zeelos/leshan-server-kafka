@@ -14,20 +14,25 @@
 
 package io.zeelos.leshan.server.kafka.serialization.avro;
 
-import io.zeelos.leshan.avro.registration.*;
-import io.zeelos.leshan.server.kafka.utils.AvroSerializer;
-import org.eclipse.leshan.Link;
-import org.eclipse.leshan.core.request.BindingMode;
-import org.eclipse.leshan.core.request.Identity;
-import org.eclipse.leshan.server.registration.Registration;
-import org.eclipse.leshan.server.registration.RegistrationUpdate;
-
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.eclipse.leshan.Link;
+import org.eclipse.leshan.core.request.BindingMode;
+import org.eclipse.leshan.core.request.Identity;
+import org.eclipse.leshan.server.registration.Registration;
+import org.eclipse.leshan.server.registration.RegistrationUpdate;
+
+import io.zeelos.leshan.avro.registration.AvroBnd;
+import io.zeelos.leshan.avro.registration.AvroLink;
+import io.zeelos.leshan.avro.registration.AvroRegistrationKind;
+import io.zeelos.leshan.avro.registration.AvroRegistrationResponse;
+import io.zeelos.leshan.avro.registration.AvroRegistrationUpdate;
+import io.zeelos.leshan.server.kafka.utils.AvroSerializer;
 
 /**
  * Functions for serialize and deserialize a ClientUpdate in Avro.
@@ -39,15 +44,9 @@ public class RegistrationUpdateSerDes {
         aRegistrationResponseBuilder.setKind(AvroRegistrationKind.UPDATE);
 
         AvroRegistrationUpdate.Builder aRegistrationUpdateBuilder = AvroRegistrationUpdate.newBuilder()
-                .setRegId(u.getRegistrationId())
-                .setServerId(serverId)
-                .setEp(r.getEndpoint())
-                .setAddress(u.getAddress().getHostAddress())
-                .setLt(u.getLifeTimeInSec())
-                .setSms(u.getSmsNumber())
-                .setPort(u.getPort())
-                .setLastUp(r.getLastUpdate().getTime());
-
+                .setRegId(u.getRegistrationId()).setServerId(serverId).setEp(r.getEndpoint())
+                .setAddress(u.getAddress().getHostAddress()).setLt(u.getLifeTimeInSec()).setSms(u.getSmsNumber())
+                .setPort(u.getPort()).setLastUp(r.getLastUpdate().getTime());
 
         if (u.getBindingMode() != null) {
             aRegistrationUpdateBuilder.setBnd(AvroBnd.valueOf(u.getBindingMode().name()));
@@ -64,8 +63,8 @@ public class RegistrationUpdateSerDes {
                 Map<String, String> entries = new HashMap<>();
                 for (Map.Entry<String, Object> e : l.getAttributes().entrySet()) {
                     // todo: more research on string/int case
-                    //  if (e.getValue() instanceof Integer) {
-                    //     at.add(e.getKey(), (int) e.getValue());
+                    // if (e.getValue() instanceof Integer) {
+                    // at.add(e.getKey(), (int) e.getValue());
 
                     entries.put(e.getKey(), e.getValue().toString());
                 }
@@ -102,11 +101,8 @@ public class RegistrationUpdateSerDes {
         }
 
         return new RegistrationUpdate(aObj.getRegId(),
-                Identity.unsecure(new InetSocketAddress(aObj.getAddress(), aObj.getPort()).getAddress(), aObj.getPort()),
-                aObj.getLt(),
-                aObj.getSms(),
-                BindingMode.valueOf(aObj.getBnd().name()),
-                linkObjs,
-                aObj.getAttributes());
+                Identity.unsecure(new InetSocketAddress(aObj.getAddress(), aObj.getPort()).getAddress(),
+                        aObj.getPort()),
+                aObj.getLt(), aObj.getSms(), BindingMode.valueOf(aObj.getBnd().name()), linkObjs, aObj.getAttributes());
     }
 }
