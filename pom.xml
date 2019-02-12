@@ -4,12 +4,12 @@
 
     <groupId>io.zeelos.leshan</groupId>
     <artifactId>leshan-server-kafka</artifactId>
-    <version>0.5-SNAPSHOT</version>
+    <version>0.6-SNAPSHOT</version>
     <name>leshan - server kafka</name>
     <description>An LWM2M server connected to a Kafka broker for message protocol forwarding.</description>
 
     <properties>
-        <leshan.version>1.0.0-M6</leshan.version>
+        <leshan.version>1.0.0-M10</leshan.version>
         <leshan-avro-shema.version>0.1-SNAPSHOT</leshan-avro-shema.version>
         <kafka.version>2.1.0-cp1</kafka.version>
         <confluent.version>5.1.0</confluent.version>

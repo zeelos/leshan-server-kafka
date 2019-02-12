@@ -17,7 +17,8 @@ package io.zeelos.leshan.server.kafka.serialization.avro;
 import io.zeelos.leshan.avro.request.*;
 import io.zeelos.leshan.avro.resource.AvroInstanceResource;
 import io.zeelos.leshan.server.kafka.utils.AvroSerializer;
-import org.eclipse.leshan.ObserveSpec;
+
+import org.eclipse.leshan.core.attributes.AttributeSet;
 import org.eclipse.leshan.core.node.LwM2mNode;
 import org.eclipse.leshan.core.node.LwM2mObjectInstance;
 import org.eclipse.leshan.core.request.*;
@@ -85,7 +86,7 @@ public class DownlinkRequestSerDes {
                 aRequestPayloadBuilder.setKind(AvroRequestKind.writeAttributes);
 
                 AvroWriteAttributesRequest.Builder aWriteAttributesRequestBuilder = AvroWriteAttributesRequest.newBuilder();
-                aWriteAttributesRequestBuilder.setObserveSpec(request.getObserveSpec().toString());
+                aWriteAttributesRequestBuilder.setObserveSpec(request.getAttributes().toString());
 
                 aRequestPayloadBuilder.setBody(aWriteAttributesRequestBuilder.build());
             }
@@ -144,7 +145,7 @@ public class DownlinkRequestSerDes {
             case writeAttributes:
                 AvroWriteAttributesRequest aWriteAttributesRequest = (AvroWriteAttributesRequest) aRequestPayload.getBody();
                 String observeSpec = aWriteAttributesRequest.getObserveSpec();
-                return new WriteAttributesRequest(path, ObserveSpec.parse(observeSpec));
+                return new WriteAttributesRequest(path, AttributeSet.parse(observeSpec));
             case write:
                 AvroWriteRequest aWriteRequest = (AvroWriteRequest) aRequestPayload.getBody();
                 AvroWriteRequestMode aWriteRequestMode = aWriteRequest.getMode();

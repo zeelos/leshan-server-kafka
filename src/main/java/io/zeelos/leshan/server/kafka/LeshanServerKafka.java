@@ -436,7 +436,7 @@ public class LeshanServerKafka {
         root.addServlet(eventServletHolder, "/event/*");
 
         ServletHolder clientServletHolder = new ServletHolder(
-                new ClientServlet(lwServer, lwServer.getSecuredAddress().getPort()));
+                new ClientServlet(lwServer));
         root.addServlet(clientServletHolder, "/api/clients/*");
 
         ServletHolder securityServletHolder = new ServletHolder(new SecurityServlet(securityStore, publicKey));
