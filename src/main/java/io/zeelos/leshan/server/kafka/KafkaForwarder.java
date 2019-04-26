@@ -14,15 +14,12 @@
 
 package io.zeelos.leshan.server.kafka;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-
+import io.zeelos.leshan.avro.AvroKey;
+import io.zeelos.leshan.avro.registration.AvroRegistrationResponse;
+import io.zeelos.leshan.avro.request.AvroRequest;
+import io.zeelos.leshan.avro.request.AvroRequestKind;
+import io.zeelos.leshan.avro.response.*;
+import io.zeelos.leshan.server.kafka.serialization.avro.*;
 import org.apache.avro.specific.SpecificRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -47,21 +44,14 @@ import org.eclipse.leshan.util.NamedThreadFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.zeelos.leshan.avro.AvroKey;
-import io.zeelos.leshan.avro.registration.AvroRegistrationResponse;
-import io.zeelos.leshan.avro.request.AvroRequest;
-import io.zeelos.leshan.avro.request.AvroRequestKind;
-import io.zeelos.leshan.avro.response.AvroGenericResponse;
-import io.zeelos.leshan.avro.response.AvroResponse;
-import io.zeelos.leshan.avro.response.AvroResponseCode;
-import io.zeelos.leshan.avro.response.AvroResponseObserve;
-import io.zeelos.leshan.avro.response.AvroResponsePayload;
-import io.zeelos.leshan.server.kafka.serialization.avro.DownlinkRequestSerDes;
-import io.zeelos.leshan.server.kafka.serialization.avro.RegistrationDeleteSerDes;
-import io.zeelos.leshan.server.kafka.serialization.avro.RegistrationSerDes;
-import io.zeelos.leshan.server.kafka.serialization.avro.RegistrationUpdateSerDes;
-import io.zeelos.leshan.server.kafka.serialization.avro.ResponseObserveSerDes;
-import io.zeelos.leshan.server.kafka.serialization.avro.ResponseSerDes;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Responsible for forwarding LWM2M messages to a Kafka broker.

@@ -14,33 +14,14 @@
 
 package io.zeelos.leshan.server.kafka.serialization.avro;
 
+import io.zeelos.leshan.avro.request.*;
+import io.zeelos.leshan.avro.resource.AvroInstanceResource;
+import io.zeelos.leshan.server.kafka.utils.AvroSerializer;
 import org.eclipse.leshan.core.attributes.AttributeSet;
 import org.eclipse.leshan.core.node.LwM2mNode;
 import org.eclipse.leshan.core.node.LwM2mObjectInstance;
-import org.eclipse.leshan.core.request.ContentFormat;
-import org.eclipse.leshan.core.request.CreateRequest;
-import org.eclipse.leshan.core.request.DeleteRequest;
-import org.eclipse.leshan.core.request.DiscoverRequest;
-import org.eclipse.leshan.core.request.DownLinkRequestVisitorAdapter;
-import org.eclipse.leshan.core.request.DownlinkRequest;
-import org.eclipse.leshan.core.request.ExecuteRequest;
-import org.eclipse.leshan.core.request.ObserveRequest;
-import org.eclipse.leshan.core.request.ReadRequest;
-import org.eclipse.leshan.core.request.WriteAttributesRequest;
-import org.eclipse.leshan.core.request.WriteRequest;
+import org.eclipse.leshan.core.request.*;
 import org.eclipse.leshan.core.request.WriteRequest.Mode;
-
-import io.zeelos.leshan.avro.request.AvroContentFormat;
-import io.zeelos.leshan.avro.request.AvroCreateRequest;
-import io.zeelos.leshan.avro.request.AvroExecuteRequest;
-import io.zeelos.leshan.avro.request.AvroRequest;
-import io.zeelos.leshan.avro.request.AvroRequestKind;
-import io.zeelos.leshan.avro.request.AvroRequestPayload;
-import io.zeelos.leshan.avro.request.AvroWriteAttributesRequest;
-import io.zeelos.leshan.avro.request.AvroWriteRequest;
-import io.zeelos.leshan.avro.request.AvroWriteRequestMode;
-import io.zeelos.leshan.avro.resource.AvroInstanceResource;
-import io.zeelos.leshan.server.kafka.utils.AvroSerializer;
 
 /**
  * Functions for serialize and deserialize a LWM2M Downlink request in Avro.

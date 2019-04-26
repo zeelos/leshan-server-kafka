@@ -14,30 +14,13 @@
 
 package io.zeelos.leshan.server.kafka.serialization.avro;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-
+import io.zeelos.leshan.avro.resource.*;
 import org.eclipse.leshan.core.model.ResourceModel.Type;
-import org.eclipse.leshan.core.node.LwM2mMultipleResource;
-import org.eclipse.leshan.core.node.LwM2mNode;
-import org.eclipse.leshan.core.node.LwM2mObject;
-import org.eclipse.leshan.core.node.LwM2mObjectInstance;
-import org.eclipse.leshan.core.node.LwM2mPath;
-import org.eclipse.leshan.core.node.LwM2mResource;
-import org.eclipse.leshan.core.node.LwM2mSingleResource;
+import org.eclipse.leshan.core.node.*;
 import org.eclipse.leshan.util.Base64;
 
-import io.zeelos.leshan.avro.resource.AvroInstanceResource;
-import io.zeelos.leshan.avro.resource.AvroMultipleResource;
-import io.zeelos.leshan.avro.resource.AvroObjectResource;
-import io.zeelos.leshan.avro.resource.AvroResource;
-import io.zeelos.leshan.avro.resource.AvroResourceKind;
-import io.zeelos.leshan.avro.resource.AvroType;
+import java.util.*;
+import java.util.Map.Entry;
 
 /**
  * Functions for serialize and deserialize a LWM2M node in Avro.

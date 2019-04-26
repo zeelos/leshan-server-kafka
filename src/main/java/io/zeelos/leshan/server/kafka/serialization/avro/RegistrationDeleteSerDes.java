@@ -14,12 +14,11 @@
 
 package io.zeelos.leshan.server.kafka.serialization.avro;
 
-import org.eclipse.leshan.server.registration.Registration;
-
 import io.zeelos.leshan.avro.registration.AvroRegistrationDelete;
 import io.zeelos.leshan.avro.registration.AvroRegistrationKind;
 import io.zeelos.leshan.avro.registration.AvroRegistrationResponse;
 import io.zeelos.leshan.server.kafka.utils.AvroSerializer;
+import org.eclipse.leshan.server.registration.Registration;
 
 /**
  * Functions for serialize and deserialize a Client in Avro.

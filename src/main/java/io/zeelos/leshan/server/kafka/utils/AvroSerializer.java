@@ -14,14 +14,14 @@
 
 package io.zeelos.leshan.server.kafka.utils;
 
-import java.io.ByteArrayOutputStream;
-
 import org.apache.avro.io.BinaryDecoder;
 import org.apache.avro.io.BinaryEncoder;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.io.EncoderFactory;
 import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.avro.specific.SpecificDatumWriter;
+
+import java.io.ByteArrayOutputStream;
 
 public class AvroSerializer {
 

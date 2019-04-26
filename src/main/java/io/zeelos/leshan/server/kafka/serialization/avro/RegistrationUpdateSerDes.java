@@ -14,25 +14,20 @@
 
 package io.zeelos.leshan.server.kafka.serialization.avro;
 
-import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import io.zeelos.leshan.avro.registration.*;
+import io.zeelos.leshan.server.kafka.utils.AvroSerializer;
 import org.eclipse.leshan.Link;
 import org.eclipse.leshan.core.request.BindingMode;
 import org.eclipse.leshan.core.request.Identity;
 import org.eclipse.leshan.server.registration.Registration;
 import org.eclipse.leshan.server.registration.RegistrationUpdate;
 
-import io.zeelos.leshan.avro.registration.AvroBnd;
-import io.zeelos.leshan.avro.registration.AvroLink;
-import io.zeelos.leshan.avro.registration.AvroRegistrationKind;
-import io.zeelos.leshan.avro.registration.AvroRegistrationResponse;
-import io.zeelos.leshan.avro.registration.AvroRegistrationUpdate;
-import io.zeelos.leshan.server.kafka.utils.AvroSerializer;
+import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Functions for serialize and deserialize a ClientUpdate in Avro.

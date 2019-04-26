@@ -14,50 +14,24 @@
 
 package io.zeelos.leshan.server.kafka;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.math.BigInteger;
-import java.net.BindException;
-import java.net.InetAddress;
-import java.security.AlgorithmParameters;
-import java.security.Key;
-import java.security.KeyFactory;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.security.cert.Certificate;
-import java.security.cert.X509Certificate;
-import java.security.spec.ECGenParameterSpec;
-import java.security.spec.ECParameterSpec;
-import java.security.spec.ECPoint;
-import java.security.spec.ECPrivateKeySpec;
-import java.security.spec.ECPublicKeySpec;
-import java.security.spec.InvalidKeySpecException;
-import java.security.spec.InvalidParameterSpecException;
-import java.security.spec.KeySpec;
-import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.List;
-import java.util.Properties;
-
-import javax.jmdns.JmDNS;
-import javax.jmdns.ServiceInfo;
-
+import io.confluent.kafka.serializers.KafkaAvroDeserializer;
+import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
+import io.confluent.kafka.serializers.KafkaAvroSerializer;
+import io.zeelos.leshan.avro.AvroKey;
+import io.zeelos.leshan.avro.request.AvroRequest;
 import org.apache.avro.specific.SpecificRecord;
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
+import org.apache.commons.cli.*;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.eclipse.californium.core.network.config.NetworkConfig;
+import org.eclipse.californium.scandium.config.DtlsConnectorConfig;
+import org.eclipse.californium.scandium.config.DtlsConnectorConfig.Builder;
+import org.eclipse.californium.scandium.dtls.CertificateMessage;
+import org.eclipse.californium.scandium.dtls.DTLSSession;
+import org.eclipse.californium.scandium.dtls.HandshakeException;
+import org.eclipse.californium.scandium.dtls.x509.CertificateVerifier;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.webapp.WebAppContext;
@@ -78,15 +52,28 @@ import org.eclipse.leshan.server.impl.FileSecurityStore;
 import org.eclipse.leshan.server.model.LwM2mModelProvider;
 import org.eclipse.leshan.server.model.StaticModelProvider;
 import org.eclipse.leshan.server.security.EditableSecurityStore;
-import org.eclipse.leshan.util.Hex;
+import org.eclipse.leshan.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.confluent.kafka.serializers.KafkaAvroDeserializer;
-import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
-import io.confluent.kafka.serializers.KafkaAvroSerializer;
-import io.zeelos.leshan.avro.AvroKey;
-import io.zeelos.leshan.avro.request.AvroRequest;
+import javax.jmdns.JmDNS;
+import javax.jmdns.ServiceInfo;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.BindException;
+import java.net.InetAddress;
+import java.security.Key;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.PrivateKey;
+import java.security.cert.Certificate;
+import java.security.cert.X509Certificate;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.Properties;
 
 /**
  * The main entry point for the Leshan LWM2M to Kafka forwarder.
@@ -131,6 +118,18 @@ public class LeshanServerKafka {
         // Define options for command line tools
         Options options = new Options();
 
+        final StringBuilder X509Chapter = new StringBuilder();
+        X509Chapter.append("\n .");
+        X509Chapter.append("\n .");
+        X509Chapter.append("\n ===============================[ X509 ]=================================");
+        X509Chapter.append("\n | By default Leshan demo uses an embedded self-signed certificate and  |");
+        X509Chapter.append("\n | trusts any client certificates.                                      |");
+        X509Chapter.append("\n | If you want to use your own server keys, certificates and truststore,|");
+        X509Chapter.append("\n | you can provide a keystore using -ks, -ksp, -kst, -ksa, -ksap.       |");
+        X509Chapter.append("\n | To get helps about files format and how to generate it, see :        |");
+        X509Chapter.append("\n | See https://github.com/eclipse/leshan/wiki/Credential-files-format   |");
+        X509Chapter.append("\n ------------------------------------------------------------------------");
+
         options.addOption("h", "help", false, "Display help information.");
         options.addOption("n", "serverID", true, "Sets the unique identifier of this LWM2M server instance.");
         options.addOption("lh", "coaphost", true, "Set the local CoAP address.\n  Default: any local address.");
@@ -149,7 +148,8 @@ public class LeshanServerKafka {
         options.addOption("ksap", "keypass", true, "Set the key store alias password to use.");
         options.addOption("wp", "webport", true, "Set the HTTP port for web server.\nDefault: 8080.");
         options.addOption("m", "modelsfolder", true, "A folder which contains object models in OMA DDF(.xml) format.");
-        options.addOption("mdns", "publishDNSSdServices", false, "Publish leshan's services to DNS Service discovery");
+        options.addOption("mdns", "publishDNSSdServices", false,
+                "Publish leshan's services to DNS Service discovery" + X509Chapter);
 
         // kafka options
         options.addOption("kr", "regtopic", true,
@@ -344,7 +344,7 @@ public class LeshanServerKafka {
         }
         builder.setCoapConfig(coapConfig);
 
-        PublicKey publicKey = null;
+        X509Certificate serverCertificate = null;
 
         // Set up X.509 mode
         if (keyStorePath != null) {
@@ -381,7 +381,7 @@ public class LeshanServerKafka {
                                 System.exit(-1);
                             }
                             builder.setPrivateKey((PrivateKey) key);
-                            publicKey = keyStore.getCertificate(alias).getPublicKey();
+                            serverCertificate = (X509Certificate) keyStore.getCertificate(alias);
                             builder.setCertificateChain(
                                     x509CertificateChain.toArray(new X509Certificate[x509CertificateChain.size()]));
                         }
@@ -397,31 +397,29 @@ public class LeshanServerKafka {
         // Otherwise, set up RPK mode
         else {
             try {
-                // Get point values
-                byte[] publicX = Hex
-                        .decodeHex("fcc28728c123b155be410fc1c0651da374fc6ebe7f96606e90d927d188894a73".toCharArray());
-                byte[] publicY = Hex
-                        .decodeHex("d2ffaa73957d76984633fc1cc54d0b763ca0559a9dff9706e9f4557dacc3f52a".toCharArray());
-                byte[] privateS = Hex
-                        .decodeHex("1dae121ba406802ef07c193c1ee4df91115aabd79c1ed7f4c0ef7ef6a5449400".toCharArray());
-
-                // Get Elliptic Curve Parameter spec for secp256r1
-                AlgorithmParameters algoParameters = AlgorithmParameters.getInstance("EC");
-                algoParameters.init(new ECGenParameterSpec("secp256r1"));
-                ECParameterSpec parameterSpec = algoParameters.getParameterSpec(ECParameterSpec.class);
-
-                // Create key specs
-                KeySpec publicKeySpec = new ECPublicKeySpec(
-                        new ECPoint(new BigInteger(publicX), new BigInteger(publicY)), parameterSpec);
-                KeySpec privateKeySpec = new ECPrivateKeySpec(new BigInteger(privateS), parameterSpec);
-
-                // Get keys
-                publicKey = KeyFactory.getInstance("EC").generatePublic(publicKeySpec);
-                PrivateKey privateKey = KeyFactory.getInstance("EC").generatePrivate(privateKeySpec);
-                builder.setPublicKey(publicKey);
+                PrivateKey privateKey = SecurityUtil.privateKey.readFromResource("credentials/server_privkey.der");
+                serverCertificate = SecurityUtil.certificate.readFromResource("credentials/server_cert.der");
                 builder.setPrivateKey(privateKey);
-            } catch (InvalidKeySpecException | NoSuchAlgorithmException | InvalidParameterSpecException e) {
-                log.error("Unable to initialize RPK.", e);
+                builder.setCertificateChain(new X509Certificate[] { serverCertificate });
+
+                // Use a certificate verifier which trust all certificates by default.
+                Builder dtlsConfigBuilder = new DtlsConnectorConfig.Builder();
+                dtlsConfigBuilder.setCertificateVerifier(new CertificateVerifier() {
+                    @Override
+                    public void verifyCertificate(CertificateMessage message, DTLSSession session)
+                            throws HandshakeException {
+                        // trust all means never raise HandshakeException
+                    }
+
+                    @Override
+                    public X509Certificate[] getAcceptedIssuers() {
+                        return null;
+                    }
+                });
+                builder.setDtlsConfig(dtlsConfigBuilder);
+
+            } catch (Exception e) {
+                log.error("Unable to load embedded X.509 certificate.", e);
                 System.exit(-1);
             }
         }
@@ -458,7 +456,7 @@ public class LeshanServerKafka {
         ServletHolder clientServletHolder = new ServletHolder(new ClientServlet(lwServer));
         root.addServlet(clientServletHolder, "/api/clients/*");
 
-        ServletHolder securityServletHolder = new ServletHolder(new SecurityServlet(securityStore, publicKey));
+        ServletHolder securityServletHolder = new ServletHolder(new SecurityServlet(securityStore, serverCertificate));
         root.addServlet(securityServletHolder, "/api/security/*");
 
         ServletHolder objectSpecServletHolder = new ServletHolder(new ObjectSpecServlet(lwServer.getModelProvider()));

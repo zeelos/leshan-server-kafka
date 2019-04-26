@@ -14,19 +14,14 @@
 
 package io.zeelos.leshan.server.kafka.serialization.avro;
 
+import io.zeelos.leshan.avro.request.AvroRequestKind;
+import io.zeelos.leshan.avro.response.*;
+import io.zeelos.leshan.server.kafka.utils.AvroSerializer;
 import org.eclipse.californium.core.Utils;
 import org.eclipse.leshan.ResponseCode;
 import org.eclipse.leshan.core.node.LwM2mNode;
 import org.eclipse.leshan.core.response.ObserveResponse;
 import org.eclipse.leshan.core.response.ReadResponse;
-
-import io.zeelos.leshan.avro.request.AvroRequestKind;
-import io.zeelos.leshan.avro.response.AvroGenericResponse;
-import io.zeelos.leshan.avro.response.AvroReadResponseBody;
-import io.zeelos.leshan.avro.response.AvroResponseCode;
-import io.zeelos.leshan.avro.response.AvroResponseObserve;
-import io.zeelos.leshan.avro.response.AvroResponsePayload;
-import io.zeelos.leshan.server.kafka.utils.AvroSerializer;
 
 /**
  * Functions for serialize and deserialize a LWM2M observe response in Avro.

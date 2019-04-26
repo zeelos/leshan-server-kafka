@@ -14,30 +14,16 @@
 
 package io.zeelos.leshan.server.kafka.serialization.avro;
 
-import java.util.Arrays;
-
+import io.zeelos.leshan.avro.request.AvroRequestKind;
+import io.zeelos.leshan.avro.response.*;
+import io.zeelos.leshan.server.kafka.utils.AvroSerializer;
 import org.eclipse.leshan.Link;
 import org.eclipse.leshan.ResponseCode;
 import org.eclipse.leshan.core.node.LwM2mNode;
 import org.eclipse.leshan.core.node.LwM2mPath;
-import org.eclipse.leshan.core.response.CreateResponse;
-import org.eclipse.leshan.core.response.DeleteResponse;
-import org.eclipse.leshan.core.response.DiscoverResponse;
-import org.eclipse.leshan.core.response.ExecuteResponse;
-import org.eclipse.leshan.core.response.LwM2mResponse;
-import org.eclipse.leshan.core.response.ReadResponse;
-import org.eclipse.leshan.core.response.WriteAttributesResponse;
-import org.eclipse.leshan.core.response.WriteResponse;
+import org.eclipse.leshan.core.response.*;
 
-import io.zeelos.leshan.avro.request.AvroRequestKind;
-import io.zeelos.leshan.avro.response.AvroCreateResponse;
-import io.zeelos.leshan.avro.response.AvroDiscoverResponse;
-import io.zeelos.leshan.avro.response.AvroGenericResponse;
-import io.zeelos.leshan.avro.response.AvroReadResponseBody;
-import io.zeelos.leshan.avro.response.AvroResponse;
-import io.zeelos.leshan.avro.response.AvroResponseCode;
-import io.zeelos.leshan.avro.response.AvroResponsePayload;
-import io.zeelos.leshan.server.kafka.utils.AvroSerializer;
+import java.util.Arrays;
 
 /**
  * Functions for serialize and deserialize a LWM2M response in Avro.
